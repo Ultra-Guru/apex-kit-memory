@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Memory graph UI (library-internal strings; all prefixed memgraph_) -->
+
+    <!-- Page -->
+    <string name="memgraph_title">Memory Graph</string>
+    <string name="memgraph_subtitle">6 memory kinds · 6 relation kinds</string>
+    <string name="memgraph_empty_title">No memories yet</string>
+    <string name="memgraph_empty_body">Complete some tasks, chats or automations — your first memory constellation will grow here.</string>
+    <string name="memgraph_load_error">Failed to load memories</string>
+    <string name="memgraph_retry">Retry</string>
+    <string name="memgraph_loading">Laying out…</string>
+
+    <!-- Stats -->
+    <string name="memgraph_stat_episodes">Episodes %1$d</string>
+    <string name="memgraph_stat_macros">Macros %1$d</string>
+    <string name="memgraph_stat_facts">Facts %1$d</string>
+    <string name="memgraph_stat_entities">Entities %1$d</string>
+    <string name="memgraph_stat_scene_nodes">Nodes %1$d</string>
+    <string name="memgraph_stat_clusters">Apps %1$d</string>
+
+    <!-- Filter / search -->
+    <string name="memgraph_filter_hint">Filter memory kinds</string>
+    <string name="memgraph_search_hint">Search memories…</string>
+    <string name="memgraph_search_result">%1$d matches</string>
+    <string name="memgraph_scene_layer">UI node layer</string>
+    <string name="memgraph_kind_episode">Episode</string>
+    <string name="memgraph_kind_macro">Macro skill</string>
+    <string name="memgraph_kind_chat_fact">Chat fact</string>
+    <string name="memgraph_kind_entity">Entity</string>
+    <string name="memgraph_kind_scene_node">UI node</string>
+    <string name="memgraph_kind_app_cluster">App cluster</string>
+
+    <!-- Legend -->
+    <string name="memgraph_legend">Legend</string>
+    <string name="memgraph_legend_nodes">Memory nodes</string>
+    <string name="memgraph_legend_edges">Relation edges</string>
+    <string name="memgraph_legend_gestures">Gestures</string>
+    <string name="memgraph_legend_gesture_pan">Drag empty space: pan</string>
+    <string name="memgraph_legend_gesture_drag">Drag a node: move it</string>
+    <string name="memgraph_legend_gesture_zoom">Pinch: zoom</string>
+    <string name="memgraph_legend_gesture_tap">Tap a node: inspect its memories</string>
+    <string name="memgraph_legend_gesture_focus">On select: neighbors lit, rest dimmed</string>
+    <string name="memgraph_legend_edge_derived">Distilled (episode → macro)</string>
+    <string name="memgraph_legend_edge_chain">Macro chain (exit → entry fingerprint)</string>
+    <string name="memgraph_legend_edge_observed">Observed (episode → node / app)</string>
+    <string name="memgraph_legend_edge_scope">App scope (macro / node → cluster)</string>
+    <string name="memgraph_legend_edge_relation">Knowledge relation (entity ↔ entity, labeled)</string>
+    <string name="memgraph_legend_edge_alias">Alias bridge (old → new fingerprint)</string>
+    <string name="memgraph_legend_badge_crystallized">Gold ring = crystallized macro</string>
+
+    <!-- Actions -->
+    <string name="memgraph_action_reset_view">Reset view</string>
+    <string name="memgraph_action_relayout">Re-layout</string>
+    <string name="memgraph_action_zoom_in">Zoom in</string>
+    <string name="memgraph_action_zoom_out">Zoom out</string>
+    <string name="memgraph_action_refresh">Refresh</string>
+    <string name="memgraph_dismiss">Dismiss</string>
+
+    <!-- Detail sheet -->
+    <string name="memgraph_detail_no_selection">Tap any memory node to inspect</string>
+    <string name="memgraph_detail_neighbors">%1$d relations</string>
+    <string name="memgraph_detail_jump">Jump</string>
+
+    <!-- Episode detail -->
+    <string name="memgraph_episode_goal">Goal</string>
+    <string name="memgraph_episode_status_running">Running</string>
+    <string name="memgraph_episode_status_succeeded">Succeeded</string>
+    <string name="memgraph_episode_status_failed">Failed</string>
+    <string name="memgraph_episode_status_abandoned">Abandoned</string>
+    <string name="memgraph_episode_actions">%1$d UI actions</string>
+    <string name="memgraph_episode_manual">Manual notes</string>
+    <string name="memgraph_episode_derived_macros">Distilled macro skills</string>
+    <string name="memgraph_episode_observed">Observed UI nodes (%1$d)</string>
+    <string name="memgraph_episode_observed_empty">(fingerprints not in node dict)</string>
+    <string name="memgraph_episode_time_range">%1$s → %2$s</string>
+    <string name="memgraph_episode_running_now">running</string>
+
+    <!-- Macro detail -->
+    <string name="memgraph_macro_goal">Skill goal</string>
+    <string name="memgraph_macro_steps_title">Action sequence (%1$d steps)</string>
+    <string name="memgraph_macro_step_anchor">anchors %1$d</string>
+    <string name="memgraph_macro_energy">Energy %1$.1f / 10</string>
+    <string name="memgraph_macro_success_rate">%1$d%% success (%2$d ok / %3$d fail)</string>
+    <string name="memgraph_macro_crystallized">Crystallized · decay-proof</string>
+    <string name="memgraph_macro_entry_points">%1$d entry fingerprints</string>
+    <string name="memgraph_macro_exit_point">Exit fingerprint</string>
+    <string name="memgraph_macro_source_episode">Source episode</string>
+    <string name="memgraph_macro_never_run">Never replayed</string>
+
+    <!-- Chat fact detail -->
+    <string name="memgraph_fact_kind_profile">Profile</string>
+    <string name="memgraph_fact_kind_state">State</string>
+    <string name="memgraph_fact_kind_milestone">Milestone</string>
+    <string name="memgraph_fact_importance">Importance %1$d%%</string>
+    <string name="memgraph_fact_credibility">Credibility %1$d%%</string>
+    <string name="memgraph_fact_accessed">Accessed %1$d times</string>
+    <string name="memgraph_fact_source_heuristic">Heuristic capture</string>
+    <string name="memgraph_fact_source_distilled">LLM distilled</string>
+    <string name="memgraph_fact_source_manual">Manual</string>
+    <string name="memgraph_fact_source_migrated">Migrated</string>
+
+    <!-- Entity detail -->
+    <string name="memgraph_entity_type">Entity type</string>
+    <string name="memgraph_entity_observations">Observations (%1$d)</string>
+    <string name="memgraph_entity_relations_in">Incoming relations</string>
+    <string name="memgraph_entity_relations_out">Outgoing relations</string>
+    <string name="memgraph_entity_no_observations">(no observations)</string>
+
+    <!-- Scene node detail -->
+    <string name="memgraph_scene_role">Role</string>
+    <string name="memgraph_scene_resource_id">Resource ID</string>
+    <string name="memgraph_scene_class">Widget class</string>
+    <string name="memgraph_scene_occurrences">%1$d occurrences · energy %2$.1f</string>
+    <string name="memgraph_scene_seen_range">First %1$s · last %2$s</string>
+
+    <!-- App cluster detail -->
+    <string name="memgraph_cluster_members">Cluster contents</string>
+    <string name="memgraph_cluster_stats">%1$d nodes · %2$d episodes · %3$d macros</string>
+    <string name="memgraph_cluster_top_nodes">Frequent UI nodes</string>
+    <string name="memgraph_cluster_recent_goals">Recent goals</string>
+    <string name="memgraph_cluster_unknown">Unknown app (memories without package)</string>
+    <string name="memgraph_cluster_empty">(no samples in cluster)</string>
+</resources>

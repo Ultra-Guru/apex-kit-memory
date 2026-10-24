@@ -1,11 +1,13 @@
 # apex-kit-memory
 
 > `com.apex.memkit:memory-core` —— 纯 Kotlin JVM 统一认知记忆引擎（零 Android 依赖）
+> `com.apex.memkit:memory-graph-ui` —— 记忆图谱交互可视化 Compose 库（六类节点 × 六类关系边）
 
 把「屏幕感知转化为可复用程序性记忆」与「对话沉淀为长期事实」收进一个可移植库：
 UI 场景差分摄取、类型化宏技能（验证回放 / 别名桥匹配）、聊天事实账本
 （启发式 + LLM 蒸馏）、MCP 语义知识图谱 —— 全部运行在原子 JSON 文档存储与
-单写者管道之上。
+单写者管道之上；`memory-graph-ui` 再把全部五轨记忆画成一张可漫游的关系网：
+力导向布局、捏合缩放、点按节点看记忆内幕、类型过滤 / 搜索 / 图例。
 
 主仓库 [Android-Guru-Agent](https://github.com/Ultra-Guru/Android-Guru-Agent)
 经 composite build 消费本库（兄弟目录 `../apex-kit-memory` 或嵌套
@@ -26,6 +28,35 @@ com.apex.memkit.core
 ├── session/                        SessionDirector（并发安全会话编排）
 └── MemKit.kt                       门面（tryBypass 旁路 / 维护周期 / 查询面 / 写入管道）
 ```
+
+```
+com.apex.memkit.graph（memory-graph-ui，Android Compose 库）
+├── graph/                          GraphModels（六类 MemoryNode / 六类 MemoryEdge / 类型化载荷）
+│                                   MemoryGraphBuilder（确定性构建：cap 截取 / 应用簇聚合 / 边推导）
+│                                   GraphSource（端口）+ MemKitGraphSource（门面适配）+ DemoGraphData
+├── layout/                         ForceDirectedLayout（spring-embedder：斥力/弹簧/簇重力/向心，
+│                                   seeded 确定性 / pinned 锚定 / relax 邻域松弛 —— 纯 Kotlin 可测）
+├── canvas/                         MemoryGraphCanvas（平移/捏合/节点拖拽手势 + LOD 渲染：
+│                                   类别色圆+字符+状态点+晶化金环+选中/搜索环、曲线箭头边、
+│                                   屏幕空间标签影描边）+ GraphPalette（类别色固定色相）+ 相机
+├── detail/                         NodeDetailSheet + 六类详情面板（情景目标/派生宏跳转、宏步骤
+│                                   时间线+能量条、事实重要性、实体观察与关系、节点指纹、簇样本）
+└── screen/                         MemoryGraphState（状态机：装载/保位过滤/搜索/漫游跳转/拖拽）
+                                    + MemoryGraphScreen / MemoryGraphContent（统计条+过滤搜索+图例）
+```
+
+**六类记忆节点**：情景（蓝·情）· 宏技能（紫·宏，晶化金环）· 聊天事实
+（青·忆，按画像/近况/里程碑聚团）· 知识实体（琥珀·知）· UI 场景节点
+（蓝灰·界，可选层）· 应用簇（绿·簇）。
+
+**六类关系边**：蒸馏产出（情景→宏）· 宏链衔接（出口指纹→入口指纹，长划线）·
+观察关系（情景→节点/应用，短划线）· 应用归属（宏/节点→簇，点线）·
+知识关系（实体↔实体，带 relationType 标签）· 版本别名桥（锈红虚点线）。
+
+**交互**：单指拖空白平移 / 拖节点移动（松手邻域松弛）· 双指捏合缩放 ·
+点按节点选中（邻接高亮、其余淡出）+ 详情 Sheet · 详情内跳转芯片漫游
+（被过滤类型自动点亮）· 类型过滤 chips（保位增量布局）· 搜索命中橙环 ·
+图例对话框 · 重置视图 / 重新布局 / 缩放按钮。
 
 ### 相对旧 :platform:cs-mem 的关键修复
 
@@ -73,11 +104,27 @@ val remembered = kit.chat.recall(userText)   // 注入 "## Remembered About You"
 kit.runMaintenanceNow()
 ```
 
+### 记忆图谱 UI（memory-graph-ui）
+
+```kotlin
+// 宿主 Compose 环境任意位置（零 Hilt / 零导航依赖）：
+val source = MemKitGraphSource(memKit)          // 或任意 MemoryGraphSource 实现
+
+// 整页形态（自带 Scaffold + 顶栏 + 图例 + 刷新）
+MemoryGraphScreen(source = source)
+
+// 嵌入形态（宿主已有外壳时 —— 统计条/过滤/搜索/画布/详情 Sheet 全含）
+val state = rememberMemoryGraphState(source)
+MemoryGraphContent(state = state, modifier = Modifier.fillMaxSize())
+```
+
 ## 构建与测试
 
 ```bash
-./gradlew :memory-core:test    # 63 项纯 JVM 测试
-./gradlew publishToMavenLocal  # 坐标冒烟
+./gradlew :memory-core:test                  # 63 项纯 JVM 测试
+./gradlew :memory-graph-ui:testDebugUnitTest # 37 项纯 JVM 测试
+                                            #（构建器 14 / 布局 8 / 源适配 2 / 相机 4 / 状态机 9）
+./gradlew publishToMavenLocal                # 双构件坐标冒烟（memory-core + memory-graph-ui）
 ```
 
 工具链矩阵与 [apex-courier-kit](https://github.com/Ultra-Guru/apex-courier-kit) /

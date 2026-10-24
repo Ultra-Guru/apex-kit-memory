@@ -222,6 +222,16 @@ class MemoryStore internal constructor(
 
     suspend fun episodeCount(): Int = mutex.withLock { episodes.size }
 
+    /**
+     * 全部情景完整记录（记忆图谱 UI 的构建输入 —— 需要观察指纹集合与
+     * 派生宏回填等 summary 之外的字段）。
+     *
+     * 按开始时间降序返回（时间线语义；图谱构建端按 cap 截取最近的子集）。
+     */
+    suspend fun allEpisodes(): List<EpisodeRecord> = mutex.withLock {
+        episodes.values.sortedByDescending { it.startedAt }
+    }
+
     private fun EpisodeRecord.toSummary() = EpisodeSummary(
         episodeId = episodeId,
         goal = goal,
@@ -427,6 +437,16 @@ class MemoryStore internal constructor(
     }
 
     suspend fun aliasCount(): Int = mutex.withLock { aliases.values.sumOf { it.size } }
+
+    /**
+     * 全部别名（记忆图谱 UI 的别名桥视图：跨版本指纹迁移线）。
+     *
+     * 按创建时间升序返回（图谱边构建的确定性要求 —— 同输入同输出，
+     * 图谱布局的 seeded 初始位置才可复现）。
+     */
+    suspend fun allAliases(): List<FingerprintAlias> = mutex.withLock {
+        aliases.values.flatten().sortedBy { it.createdAt }
+    }
 
     // ═══ 容量治理 ════════════════════════════════════════════════
 

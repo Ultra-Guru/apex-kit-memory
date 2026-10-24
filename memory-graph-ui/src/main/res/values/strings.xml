@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 记忆图谱 UI（memory-graph-ui 库内文案；宿主无资源冲突：全部 memgraph_ 前缀） -->
+
+    <!-- 页面 -->
+    <string name="memgraph_title">记忆图谱</string>
+    <string name="memgraph_subtitle">六类记忆 · 六类关系</string>
+    <string name="memgraph_empty_title">还没有记忆</string>
+    <string name="memgraph_empty_body">完成一些任务、对话或自动化后，这里会长出你的第一片记忆星图。</string>
+    <string name="memgraph_load_error">记忆加载失败</string>
+    <string name="memgraph_retry">重试</string>
+    <string name="memgraph_loading">布局计算中…</string>
+
+    <!-- 统计 -->
+    <string name="memgraph_stat_episodes">情景 %1$d</string>
+    <string name="memgraph_stat_macros">宏 %1$d</string>
+    <string name="memgraph_stat_facts">事实 %1$d</string>
+    <string name="memgraph_stat_entities">实体 %1$d</string>
+    <string name="memgraph_stat_scene_nodes">节点 %1$d</string>
+    <string name="memgraph_stat_clusters">应用 %1$d</string>
+
+    <!-- 过滤 / 搜索 -->
+    <string name="memgraph_filter_hint">过滤记忆类型</string>
+    <string name="memgraph_search_hint">搜索记忆…</string>
+    <string name="memgraph_search_result">%1$d 项命中</string>
+    <string name="memgraph_scene_layer">UI 节点层</string>
+    <string name="memgraph_kind_episode">情景</string>
+    <string name="memgraph_kind_macro">宏技能</string>
+    <string name="memgraph_kind_chat_fact">聊天事实</string>
+    <string name="memgraph_kind_entity">知识实体</string>
+    <string name="memgraph_kind_scene_node">UI 节点</string>
+    <string name="memgraph_kind_app_cluster">应用簇</string>
+
+    <!-- 图例 -->
+    <string name="memgraph_legend">图例</string>
+    <string name="memgraph_legend_nodes">记忆节点</string>
+    <string name="memgraph_legend_edges">关系连线</string>
+    <string name="memgraph_legend_gestures">手势</string>
+    <string name="memgraph_legend_gesture_pan">单指拖空白：平移</string>
+    <string name="memgraph_legend_gesture_drag">单指拖节点：移动节点</string>
+    <string name="memgraph_legend_gesture_zoom">双指捏合：缩放</string>
+    <string name="memgraph_legend_gesture_tap">点按节点：查看记忆详情</string>
+    <string name="memgraph_legend_gesture_focus">选中后：邻接高亮，其余淡出</string>
+    <string name="memgraph_legend_edge_derived">蒸馏产出（情景 → 宏）</string>
+    <string name="memgraph_legend_edge_chain">宏链衔接（出口指纹 → 入口指纹）</string>
+    <string name="memgraph_legend_edge_observed">观察关系（情景 → 节点 / 应用）</string>
+    <string name="memgraph_legend_edge_scope">应用归属（宏 / 节点 → 应用簇）</string>
+    <string name="memgraph_legend_edge_relation">知识关系（实体 ↔ 实体，带标签）</string>
+    <string name="memgraph_legend_edge_alias">版本别名桥（旧指纹 → 新指纹）</string>
+    <string name="memgraph_legend_badge_crystallized">金环 = 已晶化宏（能量满级固化）</string>
+
+    <!-- 操作 -->
+    <string name="memgraph_action_reset_view">重置视图</string>
+    <string name="memgraph_action_relayout">重新布局</string>
+    <string name="memgraph_action_zoom_in">放大</string>
+    <string name="memgraph_action_zoom_out">缩小</string>
+    <string name="memgraph_action_refresh">刷新</string>
+    <string name="memgraph_dismiss">关闭</string>
+
+    <!-- 详情 Sheet 通用 -->
+    <string name="memgraph_detail_no_selection">点按任意记忆节点查看详情</string>
+    <string name="memgraph_detail_neighbors">%1$d 个关联</string>
+    <string name="memgraph_detail_jump">跳转</string>
+
+    <!-- 情景详情 -->
+    <string name="memgraph_episode_goal">任务目标</string>
+    <string name="memgraph_episode_status_running">进行中</string>
+    <string name="memgraph_episode_status_succeeded">成功</string>
+    <string name="memgraph_episode_status_failed">失败</string>
+    <string name="memgraph_episode_status_abandoned">已放弃</string>
+    <string name="memgraph_episode_actions">UI 动作 %1$d 次</string>
+    <string name="memgraph_episode_manual">手工整理</string>
+    <string name="memgraph_episode_derived_macros">蒸馏产出的宏技能</string>
+    <string name="memgraph_episode_observed">观察到的 UI 节点（%1$d）</string>
+    <string name="memgraph_episode_observed_empty">（指纹未命中节点字典）</string>
+    <string name="memgraph_episode_time_range">%1$s → %2$s</string>
+    <string name="memgraph_episode_running_now">进行中</string>
+
+    <!-- 宏详情 -->
+    <string name="memgraph_macro_goal">技能目标</string>
+    <string name="memgraph_macro_steps_title">动作序列（%1$d 步）</string>
+    <string name="memgraph_macro_step_anchor">锚点 %1$d</string>
+    <string name="memgraph_macro_energy">能量 %1$.1f / 10</string>
+    <string name="memgraph_macro_success_rate">成功率 %1$d%%（%2$d 成 / %3$d 败）</string>
+    <string name="memgraph_macro_crystallized">已晶化 · 免衰减</string>
+    <string name="memgraph_macro_entry_points">入口指纹 %1$d 个</string>
+    <string name="memgraph_macro_exit_point">出口指纹</string>
+    <string name="memgraph_macro_source_episode">溯源情景</string>
+    <string name="memgraph_macro_never_run">尚未回放</string>
+
+    <!-- 聊天事实详情 -->
+    <string name="memgraph_fact_kind_profile">画像</string>
+    <string name="memgraph_fact_kind_state">近况</string>
+    <string name="memgraph_fact_kind_milestone">里程碑</string>
+    <string name="memgraph_fact_importance">重要性 %1$d%%</string>
+    <string name="memgraph_fact_credibility">可信度 %1$d%%</string>
+    <string name="memgraph_fact_accessed">访问 %1$d 次</string>
+    <string name="memgraph_fact_source_heuristic">启发式捕获</string>
+    <string name="memgraph_fact_source_distilled">LLM 蒸馏</string>
+    <string name="memgraph_fact_source_manual">手工录入</string>
+    <string name="memgraph_fact_source_migrated">迁移导入</string>
+
+    <!-- 实体详情 -->
+    <string name="memgraph_entity_type">实体类型</string>
+    <string name="memgraph_entity_observations">观察记录（%1$d）</string>
+    <string name="memgraph_entity_relations_in">入边关系</string>
+    <string name="memgraph_entity_relations_out">出边关系</string>
+    <string name="memgraph_entity_no_observations">（无观察记录）</string>
+
+    <!-- 场景节点详情 -->
+    <string name="memgraph_scene_role">交互角色</string>
+    <string name="memgraph_scene_resource_id">资源 ID</string>
+    <string name="memgraph_scene_class">控件类</string>
+    <string name="memgraph_scene_occurrences">出现 %1$d 次 · 能量 %2$.1f</string>
+    <string name="memgraph_scene_seen_range">首见 %1$s · 末见 %2$s</string>
+
+    <!-- 应用簇详情 -->
+    <string name="memgraph_cluster_members">簇内记忆</string>
+    <string name="memgraph_cluster_stats">%1$d 节点 · %2$d 情景 · %3$d 宏</string>
+    <string name="memgraph_cluster_top_nodes">高频 UI 节点</string>
+    <string name="memgraph_cluster_recent_goals">近期任务目标</string>
+    <string name="memgraph_cluster_unknown">未知应用（包名缺失的记忆）</string>
+    <string name="memgraph_cluster_empty">（簇内暂无样本）</string>
+</resources>

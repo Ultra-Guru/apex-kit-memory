@@ -8,14 +8,33 @@ serialization = "1.9.0"
 maven-publish = "0.37.0"
 serialization-plugin = "2.2.21"
 junit = "4.13.2"
+# memory-graph-ui（Android Compose 库）工具链 —— 与 apex-kit-browser 的
+# browser-chrome 同构矩阵：AGP 8.13.2 必须与宿主严格一致（composite build
+# 的 AgpVersionCompatibilityRule 门禁）；BOM 2025.11.01 经消费端
+# （宿主 BOM 2026.02.00）向后二进制兼容（browser-kit 已验证的组合）。
+agp = "8.13.2"
+compose-bom = "2025.11.01"
+lifecycle = "2.8.7"
+activity-compose = "1.9.3"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 junit = { module = "junit:junit", version.ref = "junit" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-material-icons = { module = "androidx.compose.material:material-icons-extended" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+lifecycle-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "serialization-plugin" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

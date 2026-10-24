@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   build-test:
-    name: Build & Test (memory-core)
+    name: Build & Test (memory-core + memory-graph-ui)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -44,34 +44,49 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # memory-graph-ui 为 Android Compose 库 —— 需 SDK（runner 预装，指向即可）
+      - name: Configure pre-installed Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build module (compile only first for fast feedback)
-        run: ./gradlew :memory-core:assemble --no-daemon --stacktrace
+      - name: Build modules (compile only first for fast feedback)
+        run: ./gradlew :memory-core:assemble :memory-graph-ui:assembleDebug --no-daemon --stacktrace
 
       # 纯 JVM 测试必须独立跑（memory-core 零 Android 依赖的可执行证明）
       - name: memory-core pure-JVM tests
         run: ./gradlew :memory-core:test --no-daemon
 
-      # 可发布性验证：坐标/POM 生成必须完整
+      # 图谱构建器 / 布局引擎 / 状态机 / 源适配器均为纯 Kotlin —— 单测零
+      # Android API（returnDefaultValues 让类加载安全通过，无需 Robolectric）
+      - name: memory-graph-ui unit tests
+        run: ./gradlew :memory-graph-ui:testDebugUnitTest --no-daemon
+
+      # 可发布性验证：坐标/POM 生成必须完整（双构件）
       - name: publishToMavenLocal smoke check
         run: |
           ./gradlew publishToMavenLocal --no-daemon
           VER=$(grep -m1 '^version = "' memory-core/build.gradle.kts | sed 's/version = "//;s/"//')
-          echo "smoke-checking com.apex.memkit:memory-core:$VER"
-          if ls ~/.m2/repository/com/apex/memkit/memory-core/$VER/memory-core-$VER.{module,pom} >/dev/null 2>&1; then
-            echo "✅ com.apex.memkit:memory-core:$VER published to mavenLocal"
-          else
-            echo "❌ com.apex.memkit:memory-core:$VER missing in mavenLocal"; exit 1
-          fi
+          for a in memory-core memory-graph-ui; do
+            echo "smoke-checking com.apex.memkit:$a:$VER"
+            if ls ~/.m2/repository/com/apex/memkit/$a/$VER/$a-$VER.{module,pom} >/dev/null 2>&1; then
+              echo "✅ com.apex.memkit:$a:$VER published to mavenLocal"
+            else
+              echo "❌ com.apex.memkit:$a:$VER missing in mavenLocal"; exit 1
+            fi
+          done
 
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports
-          path: memory-core/build/reports/tests/
+          path: |
+            memory-core/build/reports/tests/
+            memory-graph-ui/build/reports/tests/
           retention-days: 7
 
   consumer-check:
