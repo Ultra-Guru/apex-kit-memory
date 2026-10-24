@@ -1,7 +1,7 @@
 name: Guard Rails
 
 # ═════════════════════════════════════════════════════════════════════════════
-# apex-memory-kit 护栏三查（同构 apex-kit-courier / apex-loom-kit）：
+# apex-kit-memory 护栏三查（同构 apex-kit-courier / apex-loom-kit）：
 #   1. vocabulary-scan：上游宿主专有词汇零容忍——库源码 / 文档 / 工作流
 #      不得出现宿主项目专有词汇（保证零宿主依赖的可执行证明）。
 #   2. api-surface：公共 API 面快照——每次提交导出公开类型清单工件，

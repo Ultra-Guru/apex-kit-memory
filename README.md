@@ -1,4 +1,4 @@
-# apex-memory-kit
+# apex-kit-memory
 
 > `com.apex.memkit:memory-core` —— 纯 Kotlin JVM 统一认知记忆引擎（零 Android 依赖）
 
@@ -8,8 +8,8 @@ UI 场景差分摄取、类型化宏技能（验证回放 / 别名桥匹配）�
 单写者管道之上。
 
 主仓库 [Android-Guru-Agent](https://github.com/Ultra-Guru/Android-Guru-Agent)
-经 composite build 消费本库（兄弟目录 `../apex-memory-kit` 或嵌套
-`apex-memory-kit` 命中 `settings.gradle.kts` 条件 includeBuild 时按坐标
+经 composite build 消费本库（兄弟目录 `../apex-kit-memory` 或嵌套
+`apex-kit-memory` 命中 `settings.gradle.kts` 条件 includeBuild 时按坐标
 `com.apex.memkit:memory-core` 自动替换为本地构建）。
 
 ## 架构一览

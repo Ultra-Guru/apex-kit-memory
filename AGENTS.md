@@ -1,4 +1,4 @@
-# AGENTS.md — apex-memory-kit 仓库协作规则
+# AGENTS.md — apex-kit-memory 仓库协作规则
 
 > 本文件是库仓库自身的规则文件：宿主 Android-Guru-Agent 的 Coding 模式
 > Rules 系统会自动发现工作区根的 AGENTS.md 并注入会话上下文。优先级：
