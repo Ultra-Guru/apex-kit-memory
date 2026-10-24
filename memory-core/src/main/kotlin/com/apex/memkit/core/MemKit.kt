@@ -41,7 +41,9 @@ import kotlinx.coroutines.launch
  */
 class MemKit private constructor(
     val config: MemKitConfig,
-    internal val store: MemoryStore,
+
+    /** 唯一事实源（迁移器 / 图谱 transport / 记忆页查询的直访面；单写者纪律由 store 内部保证）。 */
+    val store: MemoryStore,
     private val capture: SceneCapture?,
     performer: ActionPerformer?,
     chatModel: ChatModel?,

@@ -296,6 +296,29 @@ class MemoryStore internal constructor(
             .toList()
     }
 
+    /**
+     * 迁移导入（宿主旧存储一次性搬迁专用）：整批节点字典直入，保留原始
+     * 时间戳 / 出现计数 / 能量 —— 与 [upsertNodes] 的「now 计数」语义互补。
+     * 同指纹既有条目取更厚的统计（occurrences / energy 取大、时间取极值）。
+     */
+    suspend fun importNodes(entries: List<NodeDictEntry>) = mutex.withLock {
+        for (e in entries) {
+            val cur = nodes[e.fingerprint]
+            if (cur == null) {
+                nodes[e.fingerprint] = e
+            } else {
+                nodes[e.fingerprint] = cur.copy(
+                    occurrences = maxOf(cur.occurrences, e.occurrences),
+                    energy = maxOf(cur.energy, e.energy),
+                    firstSeenAt = if (cur.firstSeenAt == 0L) e.firstSeenAt else minOf(cur.firstSeenAt, e.firstSeenAt),
+                    lastSeenAt = maxOf(cur.lastSeenAt, e.lastSeenAt),
+                    appVersion = e.appVersion ?: cur.appVersion,
+                )
+            }
+        }
+        if (entries.isNotEmpty()) markDirty(DOC_NODES)
+    }
+
     suspend fun nodeCount(): Int = mutex.withLock { nodes.size }
 
     /** 全部节点快照（别名发现 / 迁移导入用）。 */
