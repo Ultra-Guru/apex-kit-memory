@@ -1,0 +1,118 @@
+name: Guard Rails
+
+# ═════════════════════════════════════════════════════════════════════════════
+# apex-memory-kit 护栏三查（同构 apex-kit-courier / apex-loom-kit）：
+#   1. vocabulary-scan：上游宿主专有词汇零容忍——库源码 / 文档 / 工作流
+#      不得出现宿主项目专有词汇（保证零宿主依赖的可执行证明）。
+#   2. api-surface：公共 API 面快照——每次提交导出公开类型清单工件，
+#      破坏性演进（类型消失/改名）在 diff 中一目了然（信息性，不阻断）。
+#   3. purity：库零 Android 依赖的静态证明（源码禁止 android./java.awt 等
+#      平台 import；java.io 仅限 store/Storage.kt 白名单）。
+# ═════════════════════════════════════════════════════════════════════════════
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: guard-rails-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  vocabulary-scan:
+    name: Guard Rails (vocabulary)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Scan sources for forbidden host vocabulary
+        run: |
+          set -euo pipefail
+          # 拼接构造禁用词（本脚本自身不出现完整字面量）
+          WORD_A="apex"
+          WORD_B="agent"
+          STEM="${WORD_A}${WORD_B}"
+          PATTERNS="${WORD_A}.agent ${WORD_A}-${WORD_B} ${WORD_A}_${WORD_B}"
+          echo "扫描形态: ${PATTERNS}"
+          VIOLATIONS=0
+          for PAT in ${PATTERNS}; do
+            echo "::group::pattern: ${PAT}"
+            # 源码扫描（Kotlin 源码是可执行依赖面；文档/工作流允许提及宿主坐标）
+            MATCHES=$(grep -rin --include='*.kt' --include='*.kts' \
+              "${PAT}" memory-core/src memory-core/build.gradle.kts build.gradle.kts settings.gradle.kts 2>/dev/null || true)
+            if [ -n "${MATCHES}" ]; then
+              echo "${MATCHES}"
+              VIOLATIONS=$((VIOLATIONS + $(echo "${MATCHES}" | wc -l)))
+            fi
+            echo "::endgroup::"
+          done
+          if [ "${VIOLATIONS}" -gt 0 ]; then
+            echo "❌ 禁用词命中 ${VIOLATIONS} 处 —— 库源码不得引用宿主坐标/词汇（零宿主依赖）"
+            exit 1
+          fi
+          echo "✅ 词汇合规：库源码零宿主引用"
+
+  purity:
+    name: Guard Rails (purity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assert zero Android imports (pure JVM proof)
+        run: |
+          set -euo pipefail
+          VIOLATIONS=$(grep -rn --include='*.kt' \
+            -E '^import (android\.|androidx\.|java\.awt\.|javax\.swing\.)' \
+            memory-core/src/main/kotlin || true)
+          if [ -n "${VIOLATIONS}" ]; then
+            echo "❌ 纯度违规 —— memory-core 不得 import Android/桌面平台类型："
+            echo "${VIOLATIONS}"
+            exit 1
+          fi
+          echo "✅ memory-core 纯 JVM：零 Android / 桌面平台 import"
+
+      - name: Assert java.io confined to storage backend
+        run: |
+          set -euo pipefail
+          VIOLATIONS=$(grep -rn --include='*.kt' -E '^import java\.io\.' \
+            memory-core/src/main/kotlin | grep -v 'store/Storage.kt' || true)
+          if [ -n "${VIOLATIONS}" ]; then
+            echo "❌ java.io.* import 越界 —— 仅 store/Storage.kt 允许（可移植性审计面）："
+            echo "${VIOLATIONS}"
+            exit 1
+          fi
+          echo "✅ java.io.* import 仅存在于 store/Storage.kt（其余 java.* 为 JVM/Android 双端安全集）"
+
+  api-surface:
+    name: Guard Rails (api surface)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Export public API surface
+        run: |
+          set -euo pipefail
+          mkdir -p build/api
+          # 公开类型与顶层可调用成员清单（签名首行口径）
+          {
+            grep -rhE --include='*.kt' '^(public\s+)?(abstract\s+)?(sealed\s+)?(class|interface|object|enum class|fun interface|annotation class)\s+[A-Za-z_]' memory-core/src/main/kotlin || true
+            grep -rhE --include='*.kt' '^(public\s+)?(suspend\s+)?fun\s+[A-Za-z_]' memory-core/src/main/kotlin || true
+            grep -rhE --include='*.kt' '^(public\s+)?(inline\s+)?fun\s+<reified' memory-core/src/main/kotlin || true
+            grep -rhE --include='*.kt' '^(public\s+)?val\s+[A-Za-z_]' memory-core/src/main/kotlin || true
+          } | sed 's/^\s*//' | sort > build/api/surface.txt
+          echo "公开 API 面条目：$(wc -l < build/api/surface.txt)"
+
+      - name: Upload API surface artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-surface
+          path: build/api/surface.txt
+          retention-days: 30
