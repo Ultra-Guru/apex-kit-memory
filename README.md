@@ -20,19 +20,20 @@ UI 场景差分摄取、类型化宏技能（验证回放 / 别名桥匹配）�
 ```
 com.apex.memkit.core
 ├── Ports.kt / MemKitConfig.kt     宿主端口（SceneCapture / ActionPerformer / ChatModel / Clock / Logger）+ 全量调参面
-├── model/                          Scene · Episode · MacroSkill(类型化 MacroAction) · ChatFact · Graph · Alias
+├── model/                          Scene · Episode · MacroSkill(类型化 MacroAction) · ChatFact · Graph · Alias · Experience
 ├── store/                          StorageBackend 端口 + 文件/内存实现 + MemoryStore（内存索引 + dirty 合并落盘）
 ├── ingest/                         SceneFingerprint · SceneReducer（语义降维）· SceneDiffer（差分）· IngestGuard（摄取防护）
 ├── procedure/                      ActionNotation（唯一解析点）· MacroDistiller · MacroMatcher · MacroRunner · MacroMaintenance
 ├── chat/                           ChatSignals（启发式）· ChatDistiller（LLM 协议）· ChatRecall · ChatEngine
 ├── graph/ 语义在 store/ChatGraphOps（MCP memory 对齐）
 ├── session/                        SessionDirector（并发安全会话编排）
-└── MemKit.kt                       门面（tryBypass 旁路 / 维护周期 / 查询面 / 写入管道）
+└── MemKit.kt                       门面（tryBypass 旁路 / 维护周期 / 查询面 / 写入管道 / 经验整理面）
 ```
 
 ```
 com.apex.memkit.graph（memory-graph-ui，Android Compose 库）
-├── graph/                          GraphModels（六类 MemoryNode / 六类 MemoryEdge / 类型化载荷）
+├── graph/                          GraphModels（六类 MemoryNode / 六类 MemoryEdge / 类型化载荷 /
+│                                   EdgeLabels 具体关联标签解析器 —— 纯 Kotlin 可测）
 │                                   MemoryGraphBuilder（确定性构建：cap 截取 / 应用簇聚合 / 边推导）
 │                                   GraphSource（端口：load 快照 + changes 变更信号）
 │                                   + MemKitGraphSource（门面适配，接 store 修订号）+ DemoGraphData
@@ -40,21 +41,26 @@ com.apex.memkit.graph（memory-graph-ui，Android Compose 库）
 │                                   seeded 确定性 / pinned 锚定 / relax 邻域松弛 —— 纯 Kotlin 可测）
 ├── canvas/                         MemoryGraphCanvas（平移/捏合/节点拖拽手势 + LOD 渲染：
 │                                   类别色圆+字符+状态点+晶化金环+选中/搜索环、曲线箭头边、
-│                                   屏幕空间标签影描边）+ GraphPalette（类别色固定色相）+ 相机
-├── detail/                         NodeDetailSheet + 六类详情面板（情景目标/派生宏跳转、宏步骤
-│                                   时间线+能量条、事实重要性、实体观察与关系、节点指纹、簇样本）
+│                                   屏幕空间标签影描边、六类边具体关联标签层）+
+│                                   GraphPalette（类别色固定色相）+ 相机
+├── detail/                         NodeDetailSheet（六类详情面板 + 关联关系清单：每条连线的
+│                                   具体关联 + 点击漫游）—— 情景目标/派生宏跳转、宏步骤
+│                                   时间线+能量条、事实重要性、实体观察与关系、节点指纹、簇样本
 └── screen/                         MemoryGraphState（状态机：装载/保位过滤/搜索/漫游跳转/拖拽
-                                    + 变更信号去抖软刷新：保位重排/选中保留/探索态相机稳定）
-                                    + MemoryGraphScreen / MemoryGraphContent（统计条+过滤搜索+图例）
+                                    + 变更信号去抖软刷新：保位重排/选中保留/探索态相机稳定）                                    + MemoryGraphScreen / MemoryGraphContent（统计条+过滤搜索+图例）
 ```
 
 **六类记忆节点**：情景（蓝·情）· 宏技能（紫·宏，晶化金环）· 聊天事实
 （青·忆，按画像/近况/里程碑聚团）· 知识实体（琥珀·知）· UI 场景节点
 （蓝灰·界，可选层）· 应用簇（绿·簇）。
 
-**六类关系边**：蒸馏产出（情景→宏）· 宏链衔接（出口指纹→入口指纹，长划线）·
-观察关系（情景→节点/应用，短划线）· 应用归属（宏/节点→簇，点线）·
-知识关系（实体↔实体，带 relationType 标签）· 版本别名桥（锈红虚点线）。
+**六类关系边（全部带具体关联标签）**：蒸馏产出（情景→宏）· 宏链衔接
+（出口指纹→入口指纹，长划线）· 观察关系（情景→节点/应用，短划线）· 应用
+归属（宏/节点→簇，点线）· 知识关系（实体↔实体，relationType 具体标签）·
+版本别名桥（锈红虚点线）。连线中点显示具体关联：知识关系用 relationType，
+其余五类用类型语义名（i18n 资源），合并边追加 ×N；选中节点时其全部
+关联标签无条件点亮，轻放大后全图边标签可见；详情 Sheet 底部另有「关联
+关系」清单（每条连线的具体关联 + 点击漫游）。
 
 **交互**：单指拖空白平移 / 拖节点移动（松手邻域松弛）· 双指捏合缩放 ·
 点按节点选中（邻接高亮、其余淡出）+ 详情 Sheet · 详情内跳转芯片漫游
@@ -106,6 +112,18 @@ kit.sessions.end(taskId, success = true)   // 成功任务自动蒸馏宏
 
 // 每轮 LLM 推理前的肌肉记忆旁路
 when (kit.tryBypass()) { is MemKit.BypassResult.Executed -> /* 跳过 LLM */ ... }
+
+// 任务后经验整理（agent 主动沉淀：摘要事实 + 教训事实 + 知识实体 + 关系三元组）
+val result = kit.consolidateExperience(
+    ExperienceReport(
+        goal = "给张三发送图片", outcome = "经聊天窗口附件选择完成", success = true,
+        lessons = listOf("权限弹窗出现时先等待 1 秒再点同意"),
+        entities = listOf(GraphEntity("微信", "app", listOf("聊天应用"))),
+        relations = listOf(GraphRelation("微信", "发送图片", "支持功能")),
+    ),
+)
+// 单点写入面：saveFact / upsertGraphEntities / addGraphRelations /
+// addEntityObservations / readGraph / searchGraph —— 均经门面直连存储
 
 // 聊天记忆
 kit.chat.onTurn(userText, assistantText)

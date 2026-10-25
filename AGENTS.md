@@ -12,7 +12,7 @@
   Android-Guru-Agent 的 composite build 兼容矩阵对齐（同 apex-kit-courier
   / apex-loom-kit / apex-standard-kit）；**宿主升级 Kotlin 后本库必须同步**，
   否则下游复合构建解析失败；
-- **本地验证**：`./gradlew :memory-core:test`（63 项纯 JVM 测试）+
+- **本地验证**：`./gradlew :memory-core:test`（71 项纯 JVM 测试）+
   `publishToMavenLocal` 坐标冒烟；
 - **纯度铁律**：`memory-core/src/main` 禁止任何 `android.* / androidx.* /
   java.awt / javax.swing` import；`java.io.*` 仅允许出现在

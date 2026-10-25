@@ -6,7 +6,13 @@ import com.apex.memkit.core.chat.ChatRecall
 import com.apex.memkit.core.chat.ChatSignals
 import com.apex.memkit.core.ingest.IngestGuard
 import com.apex.memkit.core.ingest.SceneReducer
+import com.apex.memkit.core.model.ChatFact
 import com.apex.memkit.core.model.EpisodeSummary
+import com.apex.memkit.core.model.ExperienceReport
+import com.apex.memkit.core.model.ExperienceResult
+import com.apex.memkit.core.model.GraphEntity
+import com.apex.memkit.core.model.GraphRelation
+import com.apex.memkit.core.model.GraphSearchResult
 import com.apex.memkit.core.model.MacroSkill
 import com.apex.memkit.core.model.MaintenanceReport
 import com.apex.memkit.core.procedure.MacroMaintenance
@@ -14,11 +20,19 @@ import com.apex.memkit.core.procedure.MacroMatcher
 import com.apex.memkit.core.procedure.MacroRunner
 import com.apex.memkit.core.session.SessionDirector
 import com.apex.memkit.core.store.InMemoryStorageBackend
+import com.apex.memkit.core.store.FactAddResult
 import com.apex.memkit.core.store.MemoryStore
 import com.apex.memkit.core.store.NodeDictEntry
 import com.apex.memkit.core.store.StorageBackend
+import com.apex.memkit.core.store.addGraphRelations
+import com.apex.memkit.core.store.addObservations
+import com.apex.memkit.core.store.addOrBumpFact
+import com.apex.memkit.core.store.allFacts
 import com.apex.memkit.core.store.clearQuarantine
 import com.apex.memkit.core.store.quarantineCount
+import com.apex.memkit.core.store.readGraph
+import com.apex.memkit.core.store.searchGraph
+import com.apex.memkit.core.store.upsertGraphEntities
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -185,6 +199,103 @@ class MemKit private constructor(
     suspend fun clearQuarantine(): Int = store.clearQuarantine()
 
     data class Counts(val episodes: Int, val nodes: Int, val macros: Int, val aliases: Int)
+
+    // ── 经验整理面（任务后主动沉淀：宿主写入工具的库侧落点）════════
+
+    /**
+     * 保存长期事实（画像 / 近况 / 里程碑）。
+     *
+     * 幂等：同 kind + 规范化内容同 id → 不重复堆积，重要性取 max、
+     * 访问计数累加（重复披露 = 强化信号）。
+     */
+    suspend fun saveFact(
+        content: String,
+        kind: ChatFact.Kind,
+        importance: Float = 0.6f,
+    ): FactAddResult {
+        val result = store.addOrBumpFact(content.trim(), kind, ChatFact.Source.MANUAL, importance.coerceIn(0f, 1f))
+        requestFlush()
+        return result
+    }
+
+    /** 全量事实（工具层回读 / 测试断言面）。 */
+    suspend fun allFacts(): List<ChatFact> = store.allFacts()
+
+    /**
+     * 任务后经验整理 —— 一次提交把「摘要 + 教训 + 实体 + 关系」全量沉淀。
+     *
+     * 写入语义：
+     * 1. 摘要事实「任务「goal」完成：outcome」—— success 决定里程碑/近况；
+     * 2. lessons 逐条入账本（PROFILE —— 持久经验类事实：参与关键词召回与
+     *    容量治理；STATE 只召回最新一条，放教训会永久沉底）；
+     * 3. entities upsert（同名实体观察合并去重）；
+     * 4. relations 去重追加；悬空端（实体不在图内且不在本次提交内）自动
+     *    补建占位实体（entityType = "placeholder"）—— 三元组永不悬空。
+     */
+    suspend fun consolidateExperience(report: ExperienceReport): ExperienceResult {
+        val summary = "任务「${report.goal.trim()}」${if (report.success) "完成" else "未成"}：${report.outcome.trim()}"
+        val summaryFact = store.addOrBumpFact(
+            content = summary,
+            kind = if (report.success) ChatFact.Kind.MILESTONE else ChatFact.Kind.STATE,
+            source = ChatFact.Source.MANUAL,
+            importance = if (report.success) 0.75f else 0.65f,
+        )
+        var lessonsAdded = 0
+        var lessonsBumped = 0
+        report.lessons.map { it.trim() }.filter { it.isNotBlank() }.forEach { lesson ->
+            val r = store.addOrBumpFact(lesson, ChatFact.Kind.PROFILE, ChatFact.Source.MANUAL, 0.6f)
+            if (r.added) lessonsAdded++ else if (r.bumped) lessonsBumped++
+        }
+        // 关系悬空端补建：from / to 不在图内且不在本次实体提交内 → 占位实体
+        val present = store.readGraph().first.associateBy { it.name }
+        val declared = report.entities.associateBy { it.name }
+        val placeholderNames = linkedSetOf<String>()
+        report.relations.forEach { r ->
+            listOf(r.from, r.to).forEach { endpoint ->
+                if (endpoint.isNotBlank() && present[endpoint] == null && declared[endpoint] == null) {
+                    placeholderNames.add(endpoint)
+                }
+            }
+        }
+        val placeholders = placeholderNames.map { GraphEntity(name = it, entityType = "placeholder") }
+        val entityNames = store.upsertGraphEntities(report.entities + placeholders)
+        val relationsAdded = store.addGraphRelations(report.relations)
+        requestFlush()
+        return ExperienceResult(
+            summaryAdded = summaryFact.added,
+            lessonsAdded = lessonsAdded,
+            lessonsBumped = lessonsBumped,
+            entitiesUpserted = entityNames.size,
+            relationsAdded = relationsAdded,
+        )
+    }
+
+    /** 知识图谱实体 upsert（同名合并观察；返回新增实体名）。 */
+    suspend fun upsertGraphEntities(entities: List<GraphEntity>): List<String> {
+        val added = store.upsertGraphEntities(entities)
+        requestFlush()
+        return added
+    }
+
+    /** 知识图谱关系追加（三元组整体去重；返回新增数）。 */
+    suspend fun addGraphRelations(relations: List<GraphRelation>): Int {
+        val added = store.addGraphRelations(relations)
+        requestFlush()
+        return added
+    }
+
+    /** 实体追加观察（实体不存在返回 false）。 */
+    suspend fun addEntityObservations(entityName: String, contents: List<String>): Boolean {
+        val ok = store.addObservations(entityName, contents)
+        if (ok) requestFlush()
+        return ok
+    }
+
+    /** 知识图谱读回（工具层的 create-then-verify 面）。 */
+    suspend fun readGraph(): Pair<List<GraphEntity>, List<GraphRelation>> = store.readGraph()
+
+    /** 知识图谱搜索（命中子图：实体 + 关联关系）。 */
+    suspend fun searchGraph(query: String): GraphSearchResult = store.searchGraph(query)
 
     // ── 构造 ═════════════════════════════════════════════════════
 
