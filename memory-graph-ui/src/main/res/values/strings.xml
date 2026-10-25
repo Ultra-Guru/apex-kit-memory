@@ -48,6 +48,20 @@
     <string name="memgraph_legend_edge_relation">知识关系（实体 ↔ 实体，带标签）</string>
     <string name="memgraph_legend_edge_alias">版本别名桥（旧指纹 → 新指纹）</string>
     <string name="memgraph_legend_badge_crystallized">金环 = 已晶化宏（能量满级固化）</string>
+    <string name="memgraph_legend_edge_labels">连线中点显示具体关联标签；点选节点后其全部关联即时点亮</string>
+
+    <!-- 连线上的具体关联标签（六类边默认语义名；GRAPH_RELATION 用具体 relationType） -->
+    <string name="memgraph_edge_label_derived">蒸馏产出</string>
+    <string name="memgraph_edge_label_chain">宏链衔接</string>
+    <string name="memgraph_edge_label_observed">观察到</string>
+    <string name="memgraph_edge_label_scope">归属</string>
+    <string name="memgraph_edge_label_relation">知识关系</string>
+    <string name="memgraph_edge_label_alias">版本别名桥</string>
+
+    <!-- 详情 Sheet：关联关系区 -->
+    <string name="memgraph_detail_relations">关联关系（%1$d）</string>
+    <string name="memgraph_detail_relations_empty">（无关联关系）</string>
+    <string name="memgraph_detail_relations_more">… 其余 %1$d 条</string>
 
     <!-- 操作 -->
     <string name="memgraph_action_reset_view">重置视图</string>

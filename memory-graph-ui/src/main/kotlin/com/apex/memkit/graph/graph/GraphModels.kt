@@ -79,7 +79,8 @@ data class MemoryNode(
  *
  * @param sourceId / targetId 节点 id
  * @param kind 关系类型（线型 / 颜色 / 图例的判别依据）
- * @param label 边标签（GRAPH_RELATION 的 relationType；其余为空）
+ * @param label 具体关联标签（GRAPH_RELATION 为 relationType；其余为空 ——
+ *   由渲染层经 [EdgeLabels.labelOf] 补上类型语义名）
  * @param strength 合并强度（并行边合并计数；线宽 = 1 + ln(strength)）
  */
 data class MemoryEdge(
@@ -89,6 +90,31 @@ data class MemoryEdge(
     val label: String? = null,
     val strength: Int = 1,
 )
+
+/**
+ * 边显示标签解析器 —— 「连线显示具体关联」的唯一口径。
+ *
+ * 六类边全部带可读标签：知识关系边用具体 relationType（如 works_at），
+ * 其余五类用类型语义名（构建器不硬编码文案 —— 宿主经资源解析后以
+ * [kindNames] 传入，保持库内 i18n 纪律）；合并强度 >1 时追加 ×N。
+ *
+ * 纯 Kotlin（零 Compose 依赖）—— 单测直接覆盖渲染前的标签决策。
+ */
+object EdgeLabels {
+
+    /**
+     * 解析边的具体关联标签。
+     *
+     * @param edge 目标边
+     * @param kindNames 六类边的类型语义名（GRAPH_RELATION 仅作 relationType
+     *   空白时的兜底；宿主应传全部六类）
+     * @return null = 无法解析（不渲染标签）；否则为「语义名 ×N」或 relationType
+     */
+    fun labelOf(edge: MemoryEdge, kindNames: Map<MemoryEdgeKind, String>): String? {
+        val base = edge.label?.takeIf { it.isNotBlank() } ?: kindNames[edge.kind] ?: return null
+        return if (edge.strength > 1) "$base ×${edge.strength}" else base
+    }
+}
 
 /**
  * 节点负载 —— 原始记忆数据的类型化包装。
@@ -192,6 +218,18 @@ class MemoryGraph(
     /** 节点的邻接节点 id 集合（聚焦态的完全亮集）。 */
     fun neighborsOf(nodeId: String): Set<String> =
         adjacency[nodeId]?.mapTo(mutableSetOf()) { it.second } ?: emptySet()
+
+    /**
+     * 节点的关联边列表（详情面板「关联关系」区的数据源）。
+     *
+     * 返回顺序 = 构建顺序（确定性）；每条边带上「另一端节点 id」——
+     * 面板渲染 `对端 —具体关联→ 本节点 / 本节点 —具体关联→ 对端` 的
+     * 漫游行，具体关联标签经 [EdgeLabels.labelOf] 解析。
+     */
+    fun edgesOf(nodeId: String): List<Pair<MemoryEdge, String>> =
+        adjacency[nodeId]?.mapNotNull { (edgeIndex, otherId) ->
+            edgesById[edgeIndex]?.let { it to otherId }
+        } ?: emptyList()
 
     /**
      * 子图过滤（类型开关）：保留启用类型的节点与两端皆存活的边。

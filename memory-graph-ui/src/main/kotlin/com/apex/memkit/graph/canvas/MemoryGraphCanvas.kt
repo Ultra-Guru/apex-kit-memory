@@ -25,7 +25,10 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.apex.memkit.core.model.EpisodeStatus
+import com.apex.memkit.graph.R
+import com.apex.memkit.graph.graph.EdgeLabels
 import com.apex.memkit.graph.graph.MemoryEdge
 import com.apex.memkit.graph.graph.MemoryEdgeKind
 import com.apex.memkit.graph.graph.MemoryGraph
@@ -41,11 +44,12 @@ import kotlin.math.min
  * - **单指拖空白**：平移视图；**单指拖节点**：移动节点（松手触发邻域松弛）；
  * - **双指捏合**：以质心为锚缩放 + 平移；
  * - **单击**：命中节点 → 选中（详情 Sheet 弹出）；点空白 → 取消选中；
- * - 缩放阈值驱动的 LOD：低倍只画节点，中倍加标签，高倍加关系标签。
+ * - 缩放阈值驱动的 LOD：低倍只画节点，中倍加节点标签，轻放大加边标签
+ *   （六类边全部带具体关联标签；选中态的邻接边标签无条件显示）。
  *
  * 渲染层次（一次 DrawScope 完成，无多 pass 分层）：
  * 边（曲线 + 箭头）→ 节点（类别色圆 + 类别字符 + 状态点 + 晶化金环 +
- * 选中/搜索环）→ 屏幕空间标签。
+ * 选中/搜索环）→ 屏幕空间节点标签 → 边具体关联标签（最顶层）。
  *
  * 聚焦语义（选中存在时）：选中节点 + 邻接节点全亮，其余压暗到 25%；
  * 关联边加粗，其余压到 8% —— 「点一个节点，看清它的记忆关系网」。
@@ -72,6 +76,17 @@ fun MemoryGraphCanvas(
     val labelCache = remember { HashMap<String, TextLayoutResult>() }
     val glyphCache = remember { HashMap<String, TextLayoutResult>() }
     val edgeLabelCache = remember { HashMap<String, TextLayoutResult>() }
+
+    // 六类边的具体关联语义名（资源解析一次 —— 「连线显示具体关联」的
+    // 渲染素材；知识关系边优先用自身 relationType，其余五类用此语义名）
+    val edgeKindNames = mapOf(
+        MemoryEdgeKind.DERIVED_MACRO to stringResource(R.string.memgraph_edge_label_derived),
+        MemoryEdgeKind.MACRO_CHAIN to stringResource(R.string.memgraph_edge_label_chain),
+        MemoryEdgeKind.OBSERVED_IN to stringResource(R.string.memgraph_edge_label_observed),
+        MemoryEdgeKind.APP_SCOPE to stringResource(R.string.memgraph_edge_label_scope),
+        MemoryEdgeKind.GRAPH_RELATION to stringResource(R.string.memgraph_edge_label_relation),
+        MemoryEdgeKind.ALIAS_BRIDGE to stringResource(R.string.memgraph_edge_label_alias),
+    )
 
     // 手势闭包的活值注入：pointerInput(Unit) 只装配一次手势流（相机/坐标/
     // 回调高频变更不重启检测 —— 重启会打断进行中的拖拽与捏合），
@@ -160,6 +175,7 @@ fun MemoryGraphCanvas(
             searchMatches = searchMatches,
             palette = palette,
             labelColor = labelColor,
+            edgeKindNames = edgeKindNames,
             textMeasurer = textMeasurer,
             labelCache = labelCache,
             glyphCache = glyphCache,
@@ -260,6 +276,7 @@ private fun DrawScope.drawGraph(
     searchMatches: Set<String>,
     palette: GraphPalette,
     labelColor: Color,
+    edgeKindNames: Map<MemoryEdgeKind, String>,
     textMeasurer: TextMeasurer,
     labelCache: MutableMap<String, TextLayoutResult>,
     glyphCache: MutableMap<String, TextLayoutResult>,
@@ -282,6 +299,17 @@ private fun DrawScope.drawGraph(
     }
 
     // ── 边 ──
+    // 具体关联标签候选（边循环收集，节点层之后统一绘制 —— 与节点标签
+    // 同款分层纪律：标签永远浮在连线与节点圆之上）
+    class EdgeLabelCandidate(
+        val mid: Offset,
+        val text: String,
+        val alpha: Float,
+        val color: Color,
+        val priority: Int, // 越小越优先（选中邻接 = 0；其余按 strength 降序）
+    )
+
+    val edgeLabelCandidates = mutableListOf<EdgeLabelCandidate>()
     for (edge in graph.edges) {
         val a = positions[edge.sourceId] ?: continue
         val b = positions[edge.targetId] ?: continue
@@ -341,26 +369,24 @@ private fun DrawScope.drawGraph(
             )
         }
 
-        // 关系标签（高倍放大 + 知识关系边）
-        if (edge.kind == MemoryEdgeKind.GRAPH_RELATION &&
-            edge.label != null && camera.scale >= GraphGeometry.EDGE_LABEL_MIN_SCALE &&
-            (alpha > 0.4f)
-        ) {
-            val key = edge.label!!
-            val layout = edgeLabelCache.getOrPut(key) {
-                textMeasurer.measure(
-                    key,
-                    style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Medium),
+        // 具体关联标签（六类边全覆盖）：知识关系用 relationType，其余五类
+        // 用类型语义名，合并边追加 ×N。可见性双通道：
+        //   1) 选中态的邻接边无条件显示（点一个节点立刻看清全部具体关联）；
+        //   2) 其余边在轻放大后显示（LOD 防噪：默认全景视图只看结构）。
+        val touchesSelection = focusActive && (edge.sourceId == selection || edge.targetId == selection)
+        if (alpha > 0.4f && (touchesSelection || camera.scale >= GraphGeometry.EDGE_LABEL_MIN_SCALE)) {
+            val text = EdgeLabels.labelOf(edge, edgeKindNames)
+            if (text != null) {
+                edgeLabelCandidates.add(
+                    EdgeLabelCandidate(
+                        mid = mid,
+                        text = text,
+                        alpha = alpha,
+                        color = palette.edgeColor(edge.kind),
+                        priority = if (touchesSelection) 0 else -edge.strength,
+                    ),
                 )
             }
-            drawText(
-                layout,
-                color = palette.entityColor.copy(alpha = (alpha + 0.15f).coerceAtMost(1f)),
-                topLeft = Offset(
-                    mid.x - layout.size.width / 2f,
-                    mid.y - layout.size.height / 2f,
-                ),
-            )
         }
     }
 
@@ -470,10 +496,37 @@ private fun DrawScope.drawGraph(
             )
         }
         val topLeft = Offset(pos.x - layout.size.width / 2f, pos.y)
-        // 影层（下石1px 深色）+ 主层 —— 明暗底色均可读
+        // 影层（下移1px 深色）+ 主层 —— 明暗底色均可读
         drawText(layout, color = labelShadow.copy(alpha = labelAlphaBase * alpha), topLeft = topLeft + Offset(1f, 1f))
         drawText(layout, color = labelColor.copy(alpha = labelAlphaBase * alpha), topLeft = topLeft)
     }
+
+    // ── 边标签层（最顶层：具体关联浮在连线与节点之上）──
+    // 候选裁剪：选中邻接边优先保住，其余按合并强度降序，总量封顶防噪
+    edgeLabelCandidates
+        .sortedBy { it.priority }
+        .take(GraphGeometry.MAX_EDGE_LABELS)
+        .forEach { c ->
+            val ellipsized = if (c.text.length > 24) c.text.take(23) + "…" else c.text
+            val layout = edgeLabelCache.getOrPut(ellipsized) {
+                textMeasurer.measure(
+                    ellipsized,
+                    style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Medium),
+                )
+            }
+            val topLeft = Offset(
+                c.mid.x - layout.size.width / 2f,
+                c.mid.y - layout.size.height / 2f,
+            )
+            // 影层 + 边色主层：标签颜色与连线同色系 —— 「标签长在线上」的
+            // 视觉绑定；选中邻接边提高一档不透明度（(alpha+0.15) 封顶 1f）
+            drawText(layout, color = labelShadow.copy(alpha = 0.75f * c.alpha), topLeft = topLeft + Offset(1f, 1f))
+            drawText(
+                layout,
+                color = c.color.copy(alpha = (c.alpha + 0.15f).coerceAtMost(1f)),
+                topLeft = topLeft,
+            )
+        }
 
     // 空态提示由外层 Screen 负责（画布保持纯渲染）
 }

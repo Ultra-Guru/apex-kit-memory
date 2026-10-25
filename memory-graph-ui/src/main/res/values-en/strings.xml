@@ -48,6 +48,20 @@
     <string name="memgraph_legend_edge_relation">Knowledge relation (entity ↔ entity, labeled)</string>
     <string name="memgraph_legend_edge_alias">Alias bridge (old → new fingerprint)</string>
     <string name="memgraph_legend_badge_crystallized">Gold ring = crystallized macro</string>
+    <string name="memgraph_legend_edge_labels">Edge midpoints show concrete relation labels; selecting a node lights up all its relations</string>
+
+    <!-- Concrete relation labels on edges (six default kind names; GRAPH_RELATION uses its relationType) -->
+    <string name="memgraph_edge_label_derived">distilled into</string>
+    <string name="memgraph_edge_label_chain">chains to</string>
+    <string name="memgraph_edge_label_observed">observed</string>
+    <string name="memgraph_edge_label_scope">belongs to</string>
+    <string name="memgraph_edge_label_relation">related to</string>
+    <string name="memgraph_edge_label_alias">version alias</string>
+
+    <!-- Detail sheet: relations section -->
+    <string name="memgraph_detail_relations">Relations (%1$d)</string>
+    <string name="memgraph_detail_relations_empty">(no relations)</string>
+    <string name="memgraph_detail_relations_more">… %1$d more</string>
 
     <!-- Actions -->
     <string name="memgraph_action_reset_view">Reset view</string>

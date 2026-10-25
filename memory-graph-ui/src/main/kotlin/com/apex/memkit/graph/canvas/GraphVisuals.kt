@@ -111,8 +111,17 @@ object GraphGeometry {
     /** 箭头尺寸（世界单位 × 缩放由渲染层处理）。 */
     const val ARROW_SIZE = 9f
 
-    /** 边中点标签的显示缩放阈值（知识关系标签较密 —— 高倍放大才显示）。 */
-    const val EDGE_LABEL_MIN_SCALE = 1.4f
+    /**
+     * 边中点标签的显示缩放阈值。
+     *
+     * 六类边全部带具体关联标签后的新阈值：默认 fit 视图（scale 常在 0.3..0.9）
+     * 只画线不画字防噪；轻放大即显示；选中态的邻接边无条件显示
+     * （点一个节点立刻看清它的全部具体关联，不受缩放限制）。
+     */
+    const val EDGE_LABEL_MIN_SCALE = 1.02f
+
+    /** 单帧边标签上限（候选按「选中邻接优先 → strength 降序」裁剪）。 */
+    const val MAX_EDGE_LABELS = 80
 
     /** 节点标签的显示缩放阈值。 */
     const val NODE_LABEL_MIN_SCALE = 0.55f

@@ -1,5 +1,6 @@
 package com.apex.memkit.graph.detail
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.apex.memkit.graph.R
 import com.apex.memkit.graph.canvas.GraphPalette
+import com.apex.memkit.graph.graph.EdgeLabels
+import com.apex.memkit.graph.graph.MemoryEdgeKind
 import com.apex.memkit.graph.graph.MemoryGraph
 import com.apex.memkit.graph.graph.MemoryNode
 import com.apex.memkit.graph.graph.MemoryNodeKind
@@ -33,7 +36,8 @@ import com.apex.memkit.graph.graph.MemoryNodePayload
 /**
  * 节点详情 Sheet —— 「点击节点看里面有什么记忆」的容器。
  *
- * 结构：类别徽标 + 标题行（类别名 + 关联数）→ 按载荷分派的六类详情面板。
+ * 结构：类别徽标 + 标题行（类别名 + 关联数）→ 按载荷分派的六类详情面板
+ * → 关联关系区（每条连线的具体关联 + 点击漫游）。
  * 面板内的「跳转」芯片（溯源情景 / 派生宏 / 邻接实体 / 观察节点）直接调
  * [onNavigate] —— 图谱上的记忆漫游入口。
  */
@@ -64,6 +68,7 @@ fun NodeDetailSheet(
                 is MemoryNodePayload.AppCluster ->
                     AppClusterDetailPane(payload)
             }
+            RelationsSection(node = node, graph = graph, palette = palette, onNavigate = onNavigate)
             Spacer(Modifier.height(28.dp)) // 导航条避让
         }
     }
@@ -177,6 +182,112 @@ internal fun JumpChip(text: String, onClick: () -> Unit) {
             Text(text, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
     )
+}
+
+// ══ 关联关系区（详情 Sheet 底部统一段落）════════════════════
+
+/** 详情面板展示的关联行上限（防大度数节点撑爆 Sheet）。 */
+private const val RELATION_ROWS_MAX = 12
+
+/**
+ * 关联关系区 —— 本节点每条连线的「具体关联」清单。
+ *
+ * 数据源 [MemoryGraph.edgesOf]；每行呈现：对端类别色点 + 对端标签 +
+ * 具体关联标签（[EdgeLabels.labelOf]：知识关系用 relationType，其余五类
+ * 用类型语义名，合并边 ×N）+ 方向箭头（出边 → 对端 / 入边 ← 对端）。
+ * 点行即漫游（对端被过滤时自动点亮其类型 —— 与跳转芯片同款行为）。
+ */
+@Composable
+private fun RelationsSection(
+    node: MemoryNode,
+    graph: MemoryGraph,
+    palette: GraphPalette,
+    onNavigate: (String) -> Unit,
+) {
+    val edges = graph.edgesOf(node.id)
+    SectionLabel(stringResource(R.string.memgraph_detail_relations, edges.size))
+    if (edges.isEmpty()) {
+        Text(
+            stringResource(R.string.memgraph_detail_relations_empty),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    val kindNames = edgeKindNames()
+    edges.take(RELATION_ROWS_MAX).forEach { (edge, otherId) ->
+        val other = graph.nodesById[otherId] ?: return@forEach
+        RelationRow(
+            other = other,
+            relation = EdgeLabels.labelOf(edge, kindNames)
+                ?: stringResource(R.string.memgraph_edge_label_relation),
+            outgoing = edge.sourceId == node.id,
+            color = palette.edgeColor(edge.kind),
+            onClick = { onNavigate(otherId) },
+        )
+    }
+    if (edges.size > RELATION_ROWS_MAX) {
+        Text(
+            stringResource(R.string.memgraph_detail_relations_more, edges.size - RELATION_ROWS_MAX),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+/** 六类边的类型语义名（与画布同源口径；知识关系边优先用自身 relationType）。 */
+@Composable
+private fun edgeKindNames(): Map<MemoryEdgeKind, String> = mapOf(
+    MemoryEdgeKind.DERIVED_MACRO to stringResource(R.string.memgraph_edge_label_derived),
+    MemoryEdgeKind.MACRO_CHAIN to stringResource(R.string.memgraph_edge_label_chain),
+    MemoryEdgeKind.OBSERVED_IN to stringResource(R.string.memgraph_edge_label_observed),
+    MemoryEdgeKind.APP_SCOPE to stringResource(R.string.memgraph_edge_label_scope),
+    MemoryEdgeKind.GRAPH_RELATION to stringResource(R.string.memgraph_edge_label_relation),
+    MemoryEdgeKind.ALIAS_BRIDGE to stringResource(R.string.memgraph_edge_label_alias),
+)
+
+/** 单条关联行：对端色点 + 对端标签 —具体关联→/←（点击漫游）。 */
+@Composable
+private fun RelationRow(
+    other: MemoryNode,
+    relation: String,
+    outgoing: Boolean,
+    color: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(color = color, shape = CircleShape, modifier = Modifier.size(8.dp)) {}
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = other.label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = (if (outgoing) " —$relation→ " else " ←$relation— "),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = kindLabel(other.kind),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 /** 时间格式化（统一口径：MM-dd HH:mm；同年内省略年份）。 */

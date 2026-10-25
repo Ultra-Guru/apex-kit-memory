@@ -402,6 +402,7 @@ internal fun LegendDialog(
                 LegendLine(palette.scopeEdgeColor, stringResource(R.string.memgraph_legend_edge_scope))
                 LegendLine(palette.relationEdgeColor, stringResource(R.string.memgraph_legend_edge_relation))
                 LegendLine(palette.aliasEdgeColor, stringResource(R.string.memgraph_legend_edge_alias))
+                LegendText(stringResource(R.string.memgraph_legend_edge_labels))
                 Spacer(Modifier.height(8.dp))
                 HorizontalDivider()
                 LegendSection(stringResource(R.string.memgraph_legend_gestures))
