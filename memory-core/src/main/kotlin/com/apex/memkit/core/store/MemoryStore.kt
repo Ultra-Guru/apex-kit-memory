@@ -15,6 +15,9 @@ import com.apex.memkit.core.model.NodeRole
 import com.apex.memkit.core.model.QuarantineDoc
 import com.apex.memkit.core.model.QuarantineEntry
 import com.apex.memkit.core.model.SceneNode
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
@@ -82,6 +85,19 @@ class MemoryStore internal constructor(
     internal val quarantine = LinkedHashMap<String, QuarantineEntry>()
 
     internal val dirty = HashSet<String>()
+
+    // ── 变更信号（观察者面）──────────────────────────────────────────
+    private val _revision = MutableStateFlow(0L)
+
+    /**
+     * 数据修订号：任一持久化集合「可能变更」时单调递增（[markDirty] 单点驱动）。
+     *
+     * 语义是**节拍信号**而非精确 diff —— 条件性写入（如 removeMiss）与全量
+     * 变换（如 mutateMacros）都无条件递增，观察方收到信号后自行重拉快照。
+     * 读操作 / 装载 / 落盘（flush 只消费 dirty 不产生）均不递增。记忆图谱等
+     * 展示层据此实现「记忆生长实时可见」的软刷新。
+     */
+    val revision: StateFlow<Long> = _revision.asStateFlow()
 
     internal val json = Json {
         ignoreUnknownKeys = true
@@ -169,6 +185,7 @@ class MemoryStore internal constructor(
 
     internal fun markDirty(name: String) {
         dirty.add(name)
+        _revision.value += 1L
     }
 
     // ═══ meta 标志位 ═════════════════════════════════════════════

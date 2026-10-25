@@ -229,4 +229,43 @@ class MemoryStoreTest {
         reloaded.load()  // 不抛
         assertEquals(0, reloaded.episodeCount())
     }
+
+    @Test
+    fun `修订号随写操作递增 - 装载与纯读不递增`() = runTest {
+        assertEquals(0L, store.revision.value)
+        store.load()  // 装载（读路径）不算变更
+        assertEquals(0L, store.revision.value)
+
+        store.addEpisode(EpisodeRecord("ep1", "目标", startedAt = 1))
+        val r1 = store.revision.value
+        assertTrue("写入后修订号应递增", r1 > 0L)
+
+        store.allEpisodes()          // 纯读
+        store.searchNodes("x", 10)   // 纯读
+        store.recentEpisodes(5)      // 纯读
+        assertEquals(r1, store.revision.value)
+
+        store.upsertNodes(listOf(node("a")), "com.app", "1.0")   // 五轨任一写入
+        val r2 = store.revision.value
+        assertTrue("单调递增", r2 > r1)
+
+        store.addOrBumpFact("我喜欢咖啡", ChatFact.Kind.PROFILE, ChatFact.Source.HEURISTIC, 0.5f)
+        assertTrue(store.revision.value > r2)
+
+        // 落盘只消费 dirty 不产生变更
+        val beforeFlush = store.revision.value
+        store.flush()
+        assertEquals(beforeFlush, store.revision.value)
+    }
+
+    @Test
+    fun `重载实例的修订号从零开始并可继续递增`() = runTest {
+        store.addEpisode(EpisodeRecord("ep1", "目标", startedAt = 1))
+        store.flush()
+        val reloaded = MemoryStore(config, backend, TestClock(), SilentLogger)
+        reloaded.load()
+        assertEquals(0L, reloaded.revision.value)  // 修订号不持久化（进程内观察信号）
+        reloaded.addEpisode(EpisodeRecord("ep2", "目标二", startedAt = 2))
+        assertTrue(reloaded.revision.value > 0L)
+    }
 }

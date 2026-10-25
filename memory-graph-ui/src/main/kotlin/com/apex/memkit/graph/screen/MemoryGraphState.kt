@@ -17,6 +17,8 @@ import com.apex.memkit.graph.layout.Vec2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -32,6 +34,11 @@ import kotlinx.coroutines.withContext
  * → 力导向布局 → 相机适配。过滤切换走「保位增量布局」（存活节点锚定、
  * 新增节点松弛落位）—— 关掉一类过滤器不会打乱已建立的空间认知；
  * 场景层切换是数据重塑（节点集 / 边集都变）→ 全量重排。
+ *
+ * 自动软刷新：源提供变更信号（[MemoryGraphSource.changes]，如 store 修订
+ * 号）时，去抖合并后无感重拉快照 —— 记忆生长实时可见。刷新保全探索现场
+ * （存活节点保位 / 选中保留 / 探索态相机稳定），失败静默保持现状；静态源
+ * （无信号）零开销直通，行为与旧版完全一致。
  */
 class MemoryGraphState(
     private val source: MemoryGraphSource,
@@ -87,6 +94,18 @@ class MemoryGraphState(
 
     private var layoutJob: Job? = null
     private val layoutEngine = ForceDirectedLayout(layoutSpec)
+
+    init {
+        // 变更信号观察：去抖合并（写入风暴 → 单次软刷新节拍）。scope 取构造
+        // 参数（Compose 场景 = rememberCoroutineScope —— 离开组合即取消观察）；
+        // 静态源的空流直通结束，零开销。
+        scope.launch { debouncedChanges().collect { softReload() } }
+    }
+
+    /** 变更信号（去抖合流）。 */
+    @kotlinx.coroutines.FlowPreview
+    private fun debouncedChanges(): Flow<Unit> =
+        source.changes().debounce(AUTO_REFRESH_DEBOUNCE_MS)
 
     // ── 派生态（derivedStateOf 避免手工同步）─────────────────────
 
@@ -147,14 +166,44 @@ class MemoryGraphState(
         layoutJob?.cancel()
         layoutJob = scope.launch {
             loading = true
-            val newOptions = builderOptions.copy(includeSceneNodes = enabled)
-            val graph = MemoryGraphBuilder(newOptions).build(data)
+            val graph = MemoryGraphBuilder(currentOptions()).build(data)
             fullGraph = graph
             displayGraph = graph.filtered(enabledKinds)
             selection = selection?.takeIf { it in displayGraph.nodesById }
             replacePositions(runLayout(displayGraph, pinned = emptyMap()))
             camera = fitCamera()
             loading = false
+        }
+    }
+
+    /** 当前生效的构建选项（场景层开关叠加在宿主基础选项上）。 */
+    private fun currentOptions(): MemoryGraphBuilder.Options =
+        builderOptions.copy(includeSceneNodes = sceneLayerEnabled)
+
+    // ── 自动软刷新（变更信号驱动）──────────────────────────────────
+
+    /**
+     * 无感重拉快照（[debouncedChanges] 触发）：
+     * - 失败**静默**保持现状（与首装的显式错误态不同 —— 后台刷新不打扰用户）；
+     * - 保位增量重排：存活节点锚定、新节点邻域松弛落位 —— 探索中的空间认知
+     *   不被重置；被删除节点的坐标自然淘汰；
+     * - 选中保留（节点仍存在时）；探索态（有选中）相机稳定，巡航态重适配
+     *   （新长出的记忆纳入视野）。
+     */
+    private suspend fun softReload() {
+        if (loading) return  // 首装 / 手动刷新在途 → 让位（下一信号再同步）
+        val data = runCatching { source.load() }.getOrNull() ?: return
+        lastData = data
+        layoutJob?.cancel()
+        layoutJob = scope.launch {
+            val graph = MemoryGraphBuilder(currentOptions()).build(data)
+            fullGraph = graph
+            val newDisplay = graph.filtered(enabledKinds)
+            displayGraph = newDisplay
+            selection = selection?.takeIf { it in newDisplay.nodesById }
+            val pins = positions.filterKeys { it in newDisplay.nodesById }
+            replacePositions(runLayout(newDisplay, pinned = pins, seed = FILTER_SEED))
+            if (selection == null) camera = fitCamera()
         }
     }
 
@@ -282,6 +331,12 @@ class MemoryGraphState(
 
         /** 过滤增量布局种子（区分场景，保各自可复现）。 */
         const val FILTER_SEED = 11L
+
+        /**
+         * 软刷新去抖窗口（ms）：任务执行期的写入风暴（逐帧采集 / 逐动作回写）
+         * 合并为一次重拉节拍 —— 既不漏变更，也不逐写重排。
+         */
+        const val AUTO_REFRESH_DEBOUNCE_MS = 1500L
 
         val DEFAULT_ENABLED_KINDS: Set<MemoryNodeKind> = buildSet {
             addAll(MemoryNodeKind.DISPLAY_ORDER)

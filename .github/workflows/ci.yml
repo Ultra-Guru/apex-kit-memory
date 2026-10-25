@@ -3,8 +3,9 @@ name: CI
 # apex-kit-memory CI —— 两道防线（同构 apex-kit-courier / apex-kit-loom）：
 #   1. build-test：库自身编译 + 单测 + publishToMavenLocal 可发布性
 #   2. consumer-check：跨仓库验证宿主 Android-Guru-Agent 仍能编译（防下游崩）
-#      —— 迁移期 workflow_dispatch 手动触发（宿主记忆线 PR 合并前；
-#      合并后改 push/PR 触发，输入 host-ref 可指定宿主分支）。
+#      —— 宿主记忆线已合入 main：push（main）常态触发 + workflow_dispatch
+#      手动补检（输入 host-ref 可指定宿主分支）；PR 不跑（build-test 已够，
+#      宿主全量编译代价留给 main 变更）。
 #
 # 宿主消费方式（composite build）：宿主 settings.gradle.kts 的条件
 # includeBuild —— 兄弟目录 ../apex-kit-memory 或嵌套子目录 apex-kit-memory
@@ -91,7 +92,10 @@ jobs:
 
   consumer-check:
     name: Consumer Check (host Android-Guru-Agent)
-    if: github.event_name == 'workflow_dispatch'
+    # 宿主记忆线已合入（main 已含 :platform:memory-host 接线）—— 按 ci.yml
+    # 顶部注释的迁移约定转常态：push 到 main 自动跨仓验证；手动触发保留
+    # （host-ref 可指向宿主任意分支复查）；PR 不触发（build-test 足够）。
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
